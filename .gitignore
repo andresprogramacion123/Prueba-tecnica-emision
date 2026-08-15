@@ -12,6 +12,7 @@
 /storage/framework/views/*
 !/storage/framework/views/.gitignore
 /storage/inertia-devtools
+/storage/api-docs
 /resources/js/actions
 /resources/js/routes
 /resources/js/wayfinder

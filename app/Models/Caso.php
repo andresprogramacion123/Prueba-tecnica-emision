@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\EstadoCaso;
+use Database\Factories\CasoFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,7 +14,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['numero_expediente', 'cliente_id', 'fecha_inicio', 'fecha_archivo', 'estado'])]
 class Caso extends Model
 {
-    use SoftDeletes;
+    /** @use HasFactory<CasoFactory> */
+    use HasFactory, SoftDeletes;
 
     protected $table = 'casos';
 
