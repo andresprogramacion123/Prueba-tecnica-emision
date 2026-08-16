@@ -24,8 +24,15 @@ export default defineConfig({
             },
         }),
         tailwindcss(),
-        wayfinder({
-            formVariants: true,
-        }),
+        // El stage de Node del Dockerfile no tiene PHP: los archivos de
+        // resources/js/{actions,routes} ya vienen generados por el stage PHP
+        // previo, así que este flag evita que el plugin intente regenerarlos.
+        ...(process.env.WAYFINDER_SKIP
+            ? []
+            : [
+                  wayfinder({
+                      formVariants: true,
+                  }),
+              ]),
     ],
 });

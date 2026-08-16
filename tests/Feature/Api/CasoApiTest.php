@@ -69,3 +69,54 @@ test('returns 404 when the caso is soft deleted', function () {
 
     $this->getJson("/api/casos/{$caso->id}")->assertNotFound();
 });
+
+test('guests can list casos without authentication', function () {
+    Caso::factory()->for(Cliente::factory())->create();
+
+    $this->getJson('/api/casos')->assertSuccessful();
+});
+
+test('the casos listing defaults to 10 per page and includes pagination meta', function () {
+    Caso::factory()->for(Cliente::factory())->count(15)->create();
+
+    $response = $this->getJson('/api/casos');
+
+    $response->assertSuccessful();
+    $response->assertJsonCount(10, 'data');
+    $response->assertJsonPath('meta.per_page', 10);
+    $response->assertJsonPath('meta.total', 15);
+    $response->assertJsonPath('meta.last_page', 2);
+});
+
+test('the casos listing respects the per_page query parameter', function () {
+    Caso::factory()->for(Cliente::factory())->count(5)->create();
+
+    $response = $this->getJson('/api/casos?per_page=2');
+
+    $response->assertSuccessful();
+    $response->assertJsonCount(2, 'data');
+    $response->assertJsonPath('meta.per_page', 2);
+});
+
+test('the casos listing orders casos by fecha_inicio descending', function () {
+    $cliente = Cliente::factory()->create();
+    $antiguo = Caso::factory()->for($cliente)->create(['fecha_inicio' => '2020-01-01']);
+    $reciente = Caso::factory()->for($cliente)->create(['fecha_inicio' => '2024-01-01']);
+
+    $response = $this->getJson('/api/casos');
+
+    $response->assertJsonPath('data.0.id', $reciente->id);
+    $response->assertJsonPath('data.1.id', $antiguo->id);
+});
+
+test('the casos listing excludes soft deleted casos', function () {
+    $cliente = Cliente::factory()->create();
+    $activo = Caso::factory()->for($cliente)->create();
+    $eliminado = Caso::factory()->for($cliente)->create();
+    $eliminado->delete();
+
+    $response = $this->getJson('/api/casos');
+
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $activo->id);
+});
