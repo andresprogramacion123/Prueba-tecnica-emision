@@ -89,6 +89,22 @@ Con los servicios levantados:
 - Documentación Swagger de la API: http://localhost:8000/api/documentation
 - phpMyAdmin: http://localhost:8080
 
+### Documentación Swagger
+
+![Documentación Swagger de la API](images/image2.png)
+
+### phpMyAdmin
+
+![phpMyAdmin, gestor de la base de datos](images/image3.png)
+
+### Vista principal de casos
+
+![Listado de casos del bufete](images/image4.png)
+
+### Detalle de un caso
+
+![Detalle de un caso](images/image5.png)
+
 ## Comandos importantes
 
 Generar datos de prueba (seed) - crea un usuario, clientes, abogados y casos
