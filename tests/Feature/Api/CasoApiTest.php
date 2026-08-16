@@ -120,3 +120,126 @@ test('the casos listing excludes soft deleted casos', function () {
     $response->assertJsonCount(1, 'data');
     $response->assertJsonPath('data.0.id', $activo->id);
 });
+
+test('the casos listing sorts by fecha_inicio ascending', function () {
+    $cliente = Cliente::factory()->create();
+    $antiguo = Caso::factory()->for($cliente)->create(['fecha_inicio' => '2020-01-01']);
+    $reciente = Caso::factory()->for($cliente)->create(['fecha_inicio' => '2024-01-01']);
+
+    $response = $this->getJson('/api/casos?sort_by=fecha_inicio&sort_dir=asc');
+
+    $response->assertJsonPath('data.0.id', $antiguo->id);
+    $response->assertJsonPath('data.1.id', $reciente->id);
+});
+
+test('the casos listing defaults sort_dir to desc when only sort_by is given', function () {
+    $cliente = Cliente::factory()->create();
+    $antiguo = Caso::factory()->for($cliente)->create(['fecha_inicio' => '2020-01-01']);
+    $reciente = Caso::factory()->for($cliente)->create(['fecha_inicio' => '2024-01-01']);
+
+    $response = $this->getJson('/api/casos?sort_by=fecha_inicio');
+
+    $response->assertJsonPath('data.0.id', $reciente->id);
+    $response->assertJsonPath('data.1.id', $antiguo->id);
+});
+
+test('the casos listing sorts by estado ascending and descending', function () {
+    $cliente = Cliente::factory()->create();
+    Caso::factory()->for($cliente)->create(['estado' => EstadoCaso::Archivado]);
+    Caso::factory()->for($cliente)->create(['estado' => EstadoCaso::EnTramite]);
+    Caso::factory()->for($cliente)->create(['estado' => EstadoCaso::Finalizado]);
+    Caso::factory()->for($cliente)->create(['estado' => EstadoCaso::Suspendido]);
+
+    $asc = $this->getJson('/api/casos?sort_by=estado&sort_dir=asc');
+    $asc->assertJsonPath('data.0.estado', 'archivado');
+    $asc->assertJsonPath('data.3.estado', 'suspendido');
+
+    $desc = $this->getJson('/api/casos?sort_by=estado&sort_dir=desc');
+    $desc->assertJsonPath('data.0.estado', 'suspendido');
+    $desc->assertJsonPath('data.3.estado', 'archivado');
+});
+
+test('the casos listing falls back to fecha_inicio desc for an invalid sort_by', function () {
+    $cliente = Cliente::factory()->create();
+    $antiguo = Caso::factory()->for($cliente)->create(['fecha_inicio' => '2020-01-01']);
+    $reciente = Caso::factory()->for($cliente)->create(['fecha_inicio' => '2024-01-01']);
+
+    $response = $this->getJson('/api/casos?sort_by=numero_expediente');
+
+    $response->assertJsonPath('data.0.id', $reciente->id);
+    $response->assertJsonPath('data.1.id', $antiguo->id);
+});
+
+test('the casos listing searches by numero_expediente, partial and case-insensitive', function () {
+    $cliente = Cliente::factory()->create();
+    $match = Caso::factory()->for($cliente)->create(['numero_expediente' => '2024-CIV-000123']);
+    Caso::factory()->for($cliente)->create(['numero_expediente' => '2024-PEN-000999']);
+
+    $response = $this->getJson('/api/casos?search=civ-000123');
+
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $match->id);
+});
+
+test('the casos listing searches by cliente nombre, partial and case-insensitive', function () {
+    $clienteMatch = Cliente::factory()->create(['nombre' => 'Maria Fernanda Gomez']);
+    $clienteOtro = Cliente::factory()->create(['nombre' => 'Carlos Perez']);
+    $match = Caso::factory()->for($clienteMatch)->create();
+    Caso::factory()->for($clienteOtro)->create();
+
+    $response = $this->getJson('/api/casos?search=FERNANDA');
+
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $match->id);
+});
+
+test('the casos listing search returns no results when nothing matches', function () {
+    Caso::factory()->for(Cliente::factory())->create();
+
+    $response = $this->getJson('/api/casos?search=no-existe-esto');
+
+    $response->assertJsonCount(0, 'data');
+});
+
+test('the casos listing filters by estado exacto', function (EstadoCaso $estado) {
+    $cliente = Cliente::factory()->create();
+    $match = Caso::factory()->for($cliente)->create(['estado' => $estado]);
+
+    foreach (EstadoCaso::cases() as $otro) {
+        if ($otro !== $estado) {
+            Caso::factory()->for($cliente)->create(['estado' => $otro]);
+        }
+    }
+
+    $response = $this->getJson("/api/casos?estado={$estado->value}");
+
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $match->id);
+})->with(EstadoCaso::cases());
+
+test('the casos listing combines search, estado, sort and pagination', function () {
+    $cliente = Cliente::factory()->create(['nombre' => 'Ana Torres']);
+    $otroCliente = Cliente::factory()->create(['nombre' => 'Ana Torres']);
+
+    $match1 = Caso::factory()->for($cliente)->create([
+        'estado' => EstadoCaso::EnTramite,
+        'fecha_inicio' => '2022-01-01',
+    ]);
+    $match2 = Caso::factory()->for($otroCliente)->create([
+        'estado' => EstadoCaso::EnTramite,
+        'fecha_inicio' => '2023-01-01',
+    ]);
+    Caso::factory()->for($cliente)->create(['estado' => EstadoCaso::Archivado]);
+    Caso::factory()->for(Cliente::factory()->create(['nombre' => 'Otro Nombre']))->create([
+        'estado' => EstadoCaso::EnTramite,
+    ]);
+
+    $response = $this->getJson(
+        '/api/casos?search=ana+torres&estado=en_tramite&sort_by=fecha_inicio&sort_dir=asc&per_page=1&page=2'
+    );
+
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $match2->id);
+    $response->assertJsonPath('meta.total', 2);
+    $response->assertJsonPath('meta.current_page', 2);
+});

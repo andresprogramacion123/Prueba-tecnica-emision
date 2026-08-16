@@ -1,6 +1,17 @@
 export type EstadoCaso =
     'en_tramite' | 'archivado' | 'suspendido' | 'finalizado';
 
+export type CasoSortBy = 'fecha_inicio' | 'estado';
+
+export type CasoSortDir = 'asc' | 'desc';
+
+export type CasoFilters = {
+    search: string | null;
+    estado: EstadoCaso | null;
+    sort_by: CasoSortBy;
+    sort_dir: CasoSortDir;
+};
+
 export type CasoListItem = {
     id: number;
     numero_expediente: string;

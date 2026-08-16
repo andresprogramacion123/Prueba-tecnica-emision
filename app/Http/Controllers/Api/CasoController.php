@@ -16,7 +16,7 @@ class CasoController extends Controller
     #[OA\Get(
         path: '/api/casos',
         summary: 'Listar casos paginados',
-        description: 'Devuelve un listado paginado de casos activos (no eliminados), con el cliente asociado, ordenados por fecha_inicio descendente. Endpoint publico, no requiere autenticacion.',
+        description: 'Devuelve un listado paginado de casos activos (no eliminados), con el cliente asociado. Ordenado por fecha_inicio descendente por defecto; admite ordenar por fecha_inicio o estado, buscar por numero_expediente o nombre del cliente, y filtrar por estado exacto. Endpoint publico, no requiere autenticacion.',
         tags: ['Casos'],
         parameters: [
             new OA\Parameter(
@@ -32,6 +32,34 @@ class CasoController extends Controller
                 in: 'query',
                 required: false,
                 schema: new OA\Schema(type: 'integer', default: 10, example: 10)
+            ),
+            new OA\Parameter(
+                name: 'sort_by',
+                description: 'Columna de ordenamiento (por defecto fecha_inicio)',
+                in: 'query',
+                required: false,
+                schema: new OA\Schema(type: 'string', enum: ['fecha_inicio', 'estado'], default: 'fecha_inicio', example: 'fecha_inicio')
+            ),
+            new OA\Parameter(
+                name: 'sort_dir',
+                description: 'Direccion del ordenamiento (por defecto desc)',
+                in: 'query',
+                required: false,
+                schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'], default: 'desc', example: 'desc')
+            ),
+            new OA\Parameter(
+                name: 'search',
+                description: 'Busqueda parcial, case-insensitive, por numero de expediente o nombre del cliente',
+                in: 'query',
+                required: false,
+                schema: new OA\Schema(type: 'string', example: 'Gomez')
+            ),
+            new OA\Parameter(
+                name: 'estado',
+                description: 'Filtra por estado exacto del caso',
+                in: 'query',
+                required: false,
+                schema: new OA\Schema(type: 'string', enum: ['en_tramite', 'archivado', 'suspendido', 'finalizado'], example: 'en_tramite')
             ),
         ],
         responses: [
@@ -70,7 +98,13 @@ class CasoController extends Controller
     public function index(Request $request, CasoListingService $service): AnonymousResourceCollection
     {
         return CasoListResource::collection(
-            $service->listarPaginado($request->integer('per_page', 10))
+            $service->listarPaginado(
+                porPagina: $request->integer('per_page', 10),
+                sortBy: $request->string('sort_by')->value() ?: null,
+                sortDir: $request->string('sort_dir')->value() ?: null,
+                search: $request->string('search')->value() ?: null,
+                estado: $request->string('estado')->value() ?: null,
+            )
         );
     }
 
