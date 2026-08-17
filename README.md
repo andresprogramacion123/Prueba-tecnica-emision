@@ -105,6 +105,29 @@ Con los servicios levantados:
 
 ![Detalle de un caso](images/image5.png)
 
+## Funcionalidades del listado de casos
+
+La vista principal (`/`) permite explorar los casos de forma interactiva,
+sin necesidad de recargar la página (usa Inertia con `preserveState` para
+mantener el estado de filtros al paginar):
+
+- **Búsqueda**: un campo de texto filtra por número de expediente o nombre
+  del cliente (coincidencia parcial, sin distinguir mayúsculas/minúsculas),
+  con debounce de 350ms para no disparar una petición por cada tecla.
+- **Filtro por estado**: chips para filtrar por `En trámite`, `Archivado`,
+  `Suspendido` o `Finalizado`, con los mismos colores que los badges de la
+  tabla.
+- **Ordenamiento**: las columnas "Fecha de inicio" y "Estado" son clickeables
+  para ordenar ascendente/descendente.
+- Todos los filtros (búsqueda, estado, orden) se combinan entre sí y se
+  conservan al cambiar de página, y quedan reflejados en la URL (compartible
+  por link).
+
+Estos mismos filtros están disponibles también desde la API pública
+(`GET /api/casos`) vía query params: `search`, `estado`, `sort_by`
+(`fecha_inicio` o `estado`) y `sort_dir` (`asc` o `desc`), además de `page`
+y `per_page` para la paginación.
+
 ## Comandos importantes
 
 Generar datos de prueba (seed) - crea un usuario, clientes, abogados y casos
@@ -219,3 +242,43 @@ descarga sin guardarlos en disco.
 ```bash
 sudo docker compose exec app php artisan test
 ```
+
+## Posibles mejoras futuras
+
+Esta prueba técnica se enfocó en los requisitos puntuales solicitados. En una
+versión productiva de este sistema, las siguientes mejoras serían el
+siguiente paso natural:
+
+**Autenticación y control de acceso**
+- Pantalla de inicio de sesión (usuario/correo + contraseña) en vez del flujo
+  actual de pegar un Bearer Token manualmente, con manejo de sesión real
+  para el frontend.
+- Roles y permisos (ej. administrador, abogado, asistente) para diferenciar
+  quién puede ver, crear o editar según su rol.
+
+**Gestión completa (CRUD)**
+- Formulario de creación y edición de casos, incluyendo asignar o
+  desasignar abogados a un caso existente.
+- Formulario de creación y edición de abogados y clientes.
+- Vista de listado de abogados (con sus casos asociados) y de clientes,
+  análoga a la de casos.
+- Confirmación explícita para archivar/dar de baja un registro (soft delete
+  desde la UI), ya que hoy solo existe a nivel de base de datos.
+
+**Calidad de vida y observabilidad**
+- Historial de cambios por caso (auditoría: quién y cuándo modificó qué).
+- Notificaciones (por correo o en la app) cuando se asigna un caso a un
+  abogado, o cuando un caso cambia de estado.
+- Dashboard con métricas básicas (casos por estado, carga de trabajo por
+  abogado, casos próximos a vencer).
+- Manejo de refresh tokens y expiración configurable para los Bearer Tokens,
+  en vez de tokens sin vencimiento.
+- Registro y monitoreo de errores en producción (ej. Sentry) y logging
+  estructurado.
+
+**Calidad de código y despliegue**
+- Pipeline de CI/CD (tests automáticos y build de la imagen Docker en cada
+  push).
+- Tests end-to-end del frontend (ej. Playwright) además de los tests de
+  backend ya existentes.
+- Rate limiting en los endpoints públicos de la API.
