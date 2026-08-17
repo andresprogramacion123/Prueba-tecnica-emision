@@ -44,7 +44,7 @@ RUN cp .env.example .env \
 # Stage 2: frontend (Node + Vite)
 #
 # node:22-alpine no tiene PHP, y el plugin de Vite de Wayfinder necesita
-# `php artisan wayfinder:generate` para generar resources/js/{actions,routes}.
+# `php artisan wayfinder:generate` para generar resources/js/{actions,routes,wayfinder}.
 # Por eso se copian ya generados desde el stage "vendor" y se le indica a
 # vite.config.ts (via WAYFINDER_SKIP) que no intente regenerarlos aqui.
 # ---------------------------------------------------------------------------
@@ -60,6 +60,7 @@ COPY vite.config.ts tsconfig.json components.json ./
 
 COPY --from=vendor /app/resources/js/routes ./resources/js/routes
 COPY --from=vendor /app/resources/js/actions ./resources/js/actions
+COPY --from=vendor /app/resources/js/wayfinder ./resources/js/wayfinder
 
 ENV WAYFINDER_SKIP=1
 RUN npm run build
