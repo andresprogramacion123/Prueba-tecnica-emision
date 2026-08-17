@@ -118,8 +118,9 @@ export default function CasosIndex({
     const hayFiltrosActivos = Boolean(filters.search || filters.estado);
 
     const [search, setSearch] = useState(filters.search ?? '');
-    const [filtersSearchSincronizado, setFiltersSearchSincronizado] =
-        useState(filters.search);
+    const [filtersSearchSincronizado, setFiltersSearchSincronizado] = useState(
+        filters.search,
+    );
     const esPrimerRender = useRef(true);
 
     if (filters.search !== filtersSearchSincronizado) {
@@ -151,8 +152,7 @@ export default function CasosIndex({
 
     function handleSort(column: CasoSortBy) {
         const isActive = filters.sort_by === column;
-        const nextDir =
-            isActive && filters.sort_dir === 'asc' ? 'desc' : 'asc';
+        const nextDir = isActive && filters.sort_dir === 'asc' ? 'desc' : 'asc';
 
         actualizarQuery(casos, filters, {
             sort_by: column,
@@ -198,7 +198,9 @@ export default function CasosIndex({
                             aria-pressed={!filters.estado}
                         >
                             <Badge
-                                variant={!filters.estado ? 'default' : 'outline'}
+                                variant={
+                                    !filters.estado ? 'default' : 'outline'
+                                }
                                 className={cn(
                                     filters.estado && 'text-muted-foreground',
                                 )}
