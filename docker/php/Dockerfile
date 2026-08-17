@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # ---------------------------------------------------------------------------
 # Stage 1: vendor (Composer)
 #
@@ -10,8 +12,27 @@ FROM composer:latest AS vendor
 
 WORKDIR /app
 
+# Cache mount: persiste el cache de paquetes de Composer entre builds en la
+# misma máquina, para no volver a descargar todo en cada rebuild local.
+# No ayuda en un build 100% limpio (ej. CI sin cache previo), pero mitiga el
+# rate limiting de GitHub (HTTP 429) durante el desarrollo iterativo.
+ENV COMPOSER_CACHE_DIR=/tmp/composer-cache
+
 COPY composer.json composer.lock ./
-RUN composer install --no-scripts --no-interaction --ignore-platform-reqs
+RUN --mount=type=cache,target=/tmp/composer-cache \
+    set -eu; \
+    attempt=1; \
+    max_attempts=3; \
+    until composer install --no-scripts --no-interaction --ignore-platform-reqs; do \
+        if [ "$attempt" -ge "$max_attempts" ]; then \
+            echo "composer install failed after ${max_attempts} attempts" >&2; \
+            exit 1; \
+        fi; \
+        wait_seconds=$((attempt * 10)); \
+        echo "composer install failed (attempt ${attempt}/${max_attempts}), retrying in ${wait_seconds}s..." >&2; \
+        sleep "$wait_seconds"; \
+        attempt=$((attempt + 1)); \
+    done
 
 COPY . .
 
@@ -77,8 +98,23 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+ENV COMPOSER_CACHE_DIR=/tmp/composer-cache
+
 COPY composer.json composer.lock ./
-RUN composer install --no-scripts --no-autoloader --no-interaction
+RUN --mount=type=cache,target=/tmp/composer-cache \
+    set -eu; \
+    attempt=1; \
+    max_attempts=3; \
+    until composer install --no-scripts --no-autoloader --no-interaction; do \
+        if [ "$attempt" -ge "$max_attempts" ]; then \
+            echo "composer install failed after ${max_attempts} attempts" >&2; \
+            exit 1; \
+        fi; \
+        wait_seconds=$((attempt * 10)); \
+        echo "composer install failed (attempt ${attempt}/${max_attempts}), retrying in ${wait_seconds}s..." >&2; \
+        sleep "$wait_seconds"; \
+        attempt=$((attempt + 1)); \
+    done
 
 COPY . .
 RUN composer dump-autoload --optimize
