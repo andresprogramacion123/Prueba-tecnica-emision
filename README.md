@@ -42,6 +42,24 @@
      usado también en su healthcheck) y no viene en el `.env.example`, debe
      agregarse manualmente.
 
+   Genere también la `APP_KEY` **antes** de levantar Docker por primera vez
+   (`.env.example` la trae vacía a propósito, por seguridad — no se
+   distribuye una key fija compartida en el repo):
+   ```bash
+   echo "APP_KEY=base64:$(openssl rand -base64 32)"
+   ```
+   Copie el valor completo que imprime (incluyendo el prefijo `base64:`) y
+   reemplace con él la línea `APP_KEY=` vacía en su `.env`. Este comando solo
+   necesita `openssl` (no requiere PHP ni Docker corriendo).
+   - Este paso es necesario porque `docker-compose.yml` usa
+     `env_file: - .env` en el servicio `app`, y Docker Compose lee ese
+     archivo una sola vez al crear el contenedor. Si `APP_KEY` está vacía en
+     ese momento, la variable de entorno del proceso queda vacía durante
+     toda la vida de ese contenedor — aunque `entrypoint.sh` genere una key
+     y la escriba en el `.env` físico después, Laravel prioriza la variable
+     de entorno del proceso sobre el archivo, así que la app seguiría
+     rota (500 en las rutas web) hasta el próximo `docker compose up`.
+
 ## Levantar los servicios con Docker
 
 El proyecto se levanta con Docker Compose, que orquesta 4 servicios: la

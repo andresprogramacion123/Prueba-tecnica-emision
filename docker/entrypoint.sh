@@ -26,5 +26,8 @@ echo "Cacheando configuración..."
 php artisan config:cache
 php artisan route:cache
 
+echo "Generando documentación Swagger..."
+php artisan l5-swagger:generate
+
 echo "Listo. Iniciando proceso principal: $@"
 exec "$@"
