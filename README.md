@@ -55,6 +55,24 @@ Al iniciar, el contenedor `app` espera a que MySQL esté disponible, genera la
 `APP_KEY` si hace falta, corre las migraciones (`php artisan migrate --force`)
 y cachea configuración y rutas automáticamente.
 
+Las imágenes de `app` y `nginx` son autocontenidas: no montan el código del
+host, todo (`vendor/`, los assets de Vite compilados, etc.) queda incluido en
+la imagen durante el build multi-stage. Esto significa que **un cambio de
+código no se refleja hasta reconstruir la imagen** (`sudo docker compose up
+-d --build`); no hay recarga en caliente con este `docker-compose.yml`, que
+está pensado para representar el entorno que correría un evaluador, no para
+desarrollo iterativo del día a día.
+
+La única excepción es el archivo `.env`: se monta como bind mount de un solo
+archivo (`./.env:/var/www/html/.env`), no todo el código. Esto es
+intencional y necesario, no un descuido: `.env` no puede ir horneado en la
+imagen (son credenciales locales, y ni siquiera existe hasta que el usuario
+lo crea en el paso anterior), y `php artisan key:generate` necesita un
+archivo físico real para poder escribir la `APP_KEY` generada. Al montarlo
+desde el host, esa key se persiste ahí y sobrevive a reinicios y rebuilds del
+contenedor, en vez de regenerarse (y invalidar sesiones/cookies cifradas) en
+cada arranque.
+
 ### Comandos de limpieza
 
 Si algo falla o se quiere reiniciar todo desde cero:
@@ -143,9 +161,16 @@ sudo docker compose exec app php artisan token:generate tu@email.com
 ```
 
 Generar el reporte Excel de casos por abogado por línea de comando (una hoja
-por abogado activo), persistiendo una copia en `storage/app/reportes/`:
+por abogado activo), persistiendo una copia en `storage/app/reportes/`
+**dentro del contenedor** (no hay bind mount hacia el host, así que el
+archivo no aparece en el `storage/app/reportes/` local; se pierde si el
+contenedor se recrea o se reconstruye la imagen):
 ```bash
 sudo docker compose exec app php artisan reporte:excel-abogados
+```
+Para copiarlo al host:
+```bash
+sudo docker compose cp app:/var/www/html/storage/app/reportes ./storage/app/reportes
 ```
 
 ## Estructura de proyecto

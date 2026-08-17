@@ -66,9 +66,25 @@ ENV WAYFINDER_SKIP=1
 RUN npm run build
 
 # ---------------------------------------------------------------------------
-# Stage 3: imagen final (PHP-FPM)
+# Stage 3: public (assets estáticos para nginx)
+#
+# nginx no tiene PHP y ya no monta el código del host (ver docker-compose.yml),
+# asi que necesita su propia copia de public/ -incluyendo los assets de Vite
+# ya compilados- para poder servir archivos estáticos directamente desde su
+# filesystem. Se arma en un stage aparte, sin PHP, para no depender de la
+# imagen pesada del stage "app" solo para copiar unos archivos estáticos.
 # ---------------------------------------------------------------------------
-FROM php:8.4-fpm
+FROM alpine:3.20 AS public
+
+WORKDIR /var/www/html
+
+COPY public/ ./public/
+COPY --from=frontend /app/public/build ./public/build
+
+# ---------------------------------------------------------------------------
+# Stage 4: app (imagen final, PHP-FPM)
+# ---------------------------------------------------------------------------
+FROM php:8.4-fpm AS app
 
 # Dependencias del sistema necesarias para compilar extensiones PHP
 RUN apt-get update && apt-get install -y \
@@ -132,3 +148,11 @@ EXPOSE 9000
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["php-fpm"]
+
+# ---------------------------------------------------------------------------
+# Stage 5: nginx (imagen final, sirve estáticos y proxea PHP al stage "app")
+# ---------------------------------------------------------------------------
+FROM nginx:alpine AS nginx
+
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=public /var/www/html/public /var/www/html/public
