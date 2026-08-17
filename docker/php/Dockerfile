@@ -115,6 +115,12 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+# Fuerza permisos normales (755, sin sticky bit) por si la imagen base o el
+# entorno de build dejan /var/www/html con modos inusuales (ej. drwxrwxrwt),
+# lo que impediría escribir sobre el .env bind-monteado en tiempo de
+# ejecución.
+RUN chmod 755 /var/www/html
+
 ENV COMPOSER_CACHE_DIR=/tmp/composer-cache
 
 COPY composer.json composer.lock ./
