@@ -69,27 +69,10 @@ aplicación Laravel (PHP-FPM), Nginx, MySQL y phpMyAdmin.
 sudo docker compose up -d --build
 ```
 
-Al iniciar, el contenedor `app` espera a que MySQL esté disponible, genera la
-`APP_KEY` si hace falta, corre las migraciones (`php artisan migrate --force`)
-y cachea configuración y rutas automáticamente.
-
-Las imágenes de `app` y `nginx` son autocontenidas: no montan el código del
-host, todo (`vendor/`, los assets de Vite compilados, etc.) queda incluido en
-la imagen durante el build multi-stage. Esto significa que **un cambio de
-código no se refleja hasta reconstruir la imagen** (`sudo docker compose up
--d --build`); no hay recarga en caliente con este `docker-compose.yml`, que
-está pensado para representar el entorno que correría un evaluador, no para
-desarrollo iterativo del día a día.
-
-La única excepción es el archivo `.env`: se monta como bind mount de un solo
-archivo (`./.env:/var/www/html/.env`), no todo el código. Esto es
-intencional y necesario, no un descuido: `.env` no puede ir horneado en la
-imagen (son credenciales locales, y ni siquiera existe hasta que el usuario
-lo crea en el paso anterior), y `php artisan key:generate` necesita un
-archivo físico real para poder escribir la `APP_KEY` generada. Al montarlo
-desde el host, esa key se persiste ahí y sobrevive a reinicios y rebuilds del
-contenedor, en vez de regenerarse (y invalidar sesiones/cookies cifradas) en
-cada arranque.
+Al iniciar, el contenedor `app` espera a que MySQL esté disponible, corre las
+migraciones y deja todo listo automáticamente. El código va incluido en la
+imagen (no hay recarga en caliente): tras un cambio, hay que repetir
+`sudo docker compose up -d --build`.
 
 ### Comandos de limpieza
 
@@ -115,7 +98,13 @@ Borra también las imágenes construidas por el proyecto.
 ```bash
 sudo docker builder prune -a -f
 ```
-Limpia la caché de build de Docker.
+Limpia la caché de build de Docker (incluye los `--mount=type=cache` de
+Composer del Dockerfile).
+
+Nota: si cambia `DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD`/`DB_ROOT_PASSWORD`
+en `.env`, MySQL no las aplica solo, hay que combinar los tres comandos de
+arriba (`down -v`, `--rmi all` y `builder prune`) para forzar una corrida
+100% desde cero.
 
 ## Enlaces disponibles
 
@@ -166,8 +155,9 @@ y `per_page` para la paginación.
 
 ## Comandos importantes
 
-Generar datos de prueba (seed) - crea un usuario, clientes, abogados y casos
-de ejemplo:
+Generar datos de prueba (seed) - crea un usuario (`test@example.com`,
+contraseña `password` - credencial de desarrollo únicamente, no usarla fuera
+de este entorno local), clientes, abogados y casos de ejemplo:
 ```bash
 sudo docker compose exec app php artisan db:seed
 ```
