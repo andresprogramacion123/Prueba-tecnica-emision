@@ -74,6 +74,16 @@ migraciones y deja todo listo automáticamente. El código va incluido en la
 imagen (no hay recarga en caliente): tras un cambio, hay que repetir
 `sudo docker compose up -d --build`.
 
+> **Puertos ocupados:** si `docker compose up` falla con un error de tipo
+> `address already in use` en el puerto 3306 (MySQL) o 8000/8080 (app/Nginx),
+> significa que otro proceso ya está usando ese puerto en el host. Es común
+> que ocurra con un MySQL instalado nativamente en el sistema. En Ubuntu, se
+> libera con:
+> ```bash
+> sudo systemctl stop mysql
+> sudo systemctl disable mysql
+> ```
+
 ### Comandos de limpieza
 
 Si algo falla o se quiere reiniciar todo desde cero:
